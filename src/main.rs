@@ -1,75 +1,91 @@
 use rand::Rng;
 use std::f32::consts::PI;
 use image::{GrayImage, Luma};
+use std::time::Instant;
 
 fn main() {
-    perlin_noise()
+    //start timer
+    let start = Instant::now();
+
+    perlin_noise();
+
+    // print out how long it took
+    let duration = start.elapsed();
+    println!("Time elapsed: {:?}", duration);
 }
 
 fn perlin_noise() {
-    let height = 1000;
-    let width = 1000;
-    let res_divisor_y = 1.0 / height as f32;
-    let res_divisor_x = 1.0 / width as f32;
-    let mut sample_point_x = 0.0;
-    let mut sample_point_y = 0.0;
+    let height = 500;
+    let width = 500;
+    let resolution = 0.03f32;
+    let gridpoint_width = (width as f32 * resolution) as usize;
+    let gridpoint_height = (height as f32 * resolution) as usize;
     let mut rng = rand::rng();
     let mut img = GrayImage::new(width, height);
 
-    // creating random normalized vectors for grid points
-    let A_theta: f32 = rng.random_range(0.0..(2.0 * PI));
-    let B_theta: f32 = rng.random_range(0.0..(2.0 * PI));
-    let C_theta: f32 = rng.random_range(0.0..(2.0 * PI));
-    let D_theta: f32 = rng.random_range(0.0..(2.0 * PI));
+    let mut gridpoint_vec: Vec<Vec<[f32; 2]>> = vec![vec![[0.0, 0.0]; gridpoint_width + 1]; gridpoint_height + 1];
 
-    for y in 0..height {
-        for x in 0..width {
+    // creating a grid of points with a random normalized vector
+    for gy in 0..=gridpoint_height {
+        for gx in 0..=gridpoint_width {
 
-            // defining gridpoints position
-            let A_x = 0; let A_y = 0;
-            let B_x = 0; let B_y = 1;
-            let C_x = 1; let C_y = 1;
-            let D_x = 0; let D_y = 1;
+            let theta = rng.random_range(0.0..(2.0 * PI));
+            gridpoint_vec[gy][gx] = [
+                theta.cos(),
+                theta.sin(),
+            ]
+        }
+    }
 
-            // converting random normalized vector in x, y coordinates
-            let A_vec_x = A_theta.cos();
-            let A_vec_y = A_theta.sin();
-            let B_vec_x = B_theta.cos();
-            let B_vec_y = B_theta.sin();
-            let C_vec_x = C_theta.cos();
-            let C_vec_y = C_theta.sin();
-            let D_vec_x = D_theta.cos();
-            let D_vec_y = D_theta.sin();
+    for py in 0..height {
+        for px in 0..width {
 
             // increment sample point position for rendering
-            sample_point_x = x as f32 * res_divisor_x;
-            sample_point_y = y as f32 * res_divisor_y;
+            let sample_point_x = px as f32 * resolution;
+            let sample_point_y = py as f32 * resolution;
+
+            // define points in local space
+            let local_sample_point_x = sample_point_x % 1.0;
+            let local_sample_point_y = sample_point_y % 1.0;
+            let local_A_x = sample_point_x.floor() as usize;
+            let local_A_y = sample_point_y.floor() as usize;
+            let local_B_x = (local_A_x + 1).min(gridpoint_width);
+            let local_B_y = local_A_y;
+            let local_C_x = (local_A_x + 1).min(gridpoint_width);
+            let local_C_y = (local_A_y + 1).min(gridpoint_height);
+            let local_D_x = local_A_x;
+            let local_D_y = (local_A_y + 1).min(gridpoint_height);
 
             // calculation vector from gridpoint to sample point
-            let A_vec_P_x = sample_point_x - A_x as f32;
-            let A_vec_P_y = sample_point_y - A_y as f32;
-            let B_vec_P_x = sample_point_x - B_x as f32;
-            let B_vec_P_y = sample_point_y - B_y as f32;
-            let C_vec_P_x = sample_point_x - C_x as f32;
-            let C_vec_P_y = sample_point_y - C_y as f32;
-            let D_vec_P_x = sample_point_x - D_x as f32;
-            let D_vec_P_y = sample_point_y - D_y as f32;
+            let A_vec_distance = [local_sample_point_x - 0.0, local_sample_point_y - 0.0];
+            let B_vec_distance = [local_sample_point_x - 1.0, local_sample_point_y - 0.0];
+            let C_vec_distance = [local_sample_point_x - 1.0, local_sample_point_y - 1.0];
+            let D_vec_distance = [local_sample_point_x - 0.0, local_sample_point_y - 1.0];
 
             // calculationg the dot product from both vectors at each gridpoint
-            let A_vec_dot = (A_vec_P_x * A_vec_x) + (A_vec_P_y * A_vec_y);
-            let B_vec_dot = (B_vec_P_x * B_vec_x) + (B_vec_P_y * B_vec_y);
-            let C_vec_dot = (C_vec_P_x * C_vec_x) + (C_vec_P_y * C_vec_y);
-            let D_vec_dot = (D_vec_P_x * D_vec_x) + (D_vec_P_y * D_vec_y);
+            let A_vec_dot = (A_vec_distance[0] * gridpoint_vec[local_A_y][local_A_x][0]) + (A_vec_distance[1] * gridpoint_vec[local_A_y][local_A_x][1]);
+            let B_vec_dot = (B_vec_distance[0] * gridpoint_vec[local_B_y][local_B_x][0]) + (B_vec_distance[1] * gridpoint_vec[local_B_y][local_B_x][1]);
+            let C_vec_dot = (C_vec_distance[0] * gridpoint_vec[local_C_y][local_C_x][0]) + (C_vec_distance[1] * gridpoint_vec[local_C_y][local_C_x][1]);
+            let D_vec_dot = (D_vec_distance[0] * gridpoint_vec[local_D_y][local_D_x][0]) + (D_vec_distance[1] * gridpoint_vec[local_D_y][local_D_x][1]);
 
-            // calculation the Interpolation
-            let lerp_A_B = A_vec_dot + sample_point_x * (B_vec_dot - A_vec_dot);
-            let lerp_C_D = C_vec_dot + sample_point_x * (D_vec_dot - C_vec_dot);
-            let lerp_AB_CD = lerp_A_B + sample_point_y * (lerp_C_D - lerp_A_B);
+            // apply smoothstep to the local coordinates
+            let smooth_x = smoothstep(local_sample_point_x);
+            let smooth_y = smoothstep(local_sample_point_y);
+
+            // calculation the Interpolation using smoothed values
+            let lerp_A_B = A_vec_dot + smooth_x * (B_vec_dot - A_vec_dot);
+            let lerp_C_D = D_vec_dot + smooth_x * (C_vec_dot - D_vec_dot);
+            let lerp_AB_CD = lerp_A_B + smooth_y * (lerp_C_D - lerp_A_B);
 
             // convert pixel value and filling the buffer
             let value = ((lerp_AB_CD + 1.0) * 0.5 * 255.0) as u8;
-            img.put_pixel(x, y, Luma([value]));
+            img.put_pixel(px, py, Luma([value]));
         }
     }
     img.save("perlin_noise.png").unwrap();
+}
+
+// Add this smoothstep function
+fn smoothstep(t: f32) -> f32 {
+    t * t * (3.0 - 2.0 * t)
 }
