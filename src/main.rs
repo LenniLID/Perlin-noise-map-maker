@@ -15,8 +15,8 @@ fn main() {
 }
 
 fn perlin_noise() {
-    let height = 500;
-    let width = 500;
+    let height = 1000;
+    let width = 1000;
     let resolution = 0.03f32;
     let gridpoint_width = (width as f32 * resolution) as usize;
     let gridpoint_height = (height as f32 * resolution) as usize;
@@ -81,6 +81,12 @@ fn perlin_noise() {
             let value = ((lerp_AB_CD + 1.0) * 0.5 * 255.0) as u8;
             img.put_pixel(px, py, Luma([value]));
         }
+        let progress = if py != 0 {
+            py as f32 / height as f32 * 100.0
+        } else {
+            0.0
+        };
+        println!("Progress: {}%", progress.round());
     }
     img.save("perlin_noise.png").unwrap();
 }
