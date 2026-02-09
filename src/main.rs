@@ -1,29 +1,52 @@
-use rand::Rng;
+use rand::{Rng, SeedableRng};
 use std::f32::consts::PI;
+use std::io::{stdin, stdout, Write};
 use image::{GrayImage, Luma};
 use std::time::Instant;
+use rand::rngs::StdRng;
 
 fn main() {
-    //start timer
-    let start = Instant::now();
-
     perlin_noise();
-
-    // print out how long it took
-    let duration = start.elapsed();
-    println!("Time elapsed: {:?}", duration);
 }
 
 fn perlin_noise() {
-    let height = 1000;
-    let width = 1000;
-    let resolution = 0.03f32;
+    let mut input = String::new();
+    let mut rng = rand::rng();
+    let random_number = rng.random();
+
+    // defining presets
+    print!("enter a width: ");
+    stdout().flush().unwrap();
+    stdin().read_line(&mut input).expect("invalid input");
+    let mut width = input.trim().parse::<u32>().unwrap_or(1000);
+    input.clear();
+
+    print!("enter a height: ");
+    stdout().flush().unwrap();
+    stdin().read_line(&mut input).expect("invalid input");
+    let mut height = input.trim().parse::<u32>().unwrap_or(1000);
+    input.clear();
+
+    print!("enter a resolution: ");
+    stdout().flush().unwrap();
+    stdin().read_line(&mut input).expect("invalid input");
+    let resolution = input.trim().parse::<f32>().unwrap_or(0.03f32);
+    input.clear();
+
+    print!("enter a custom seed or leave blank for a random seed: ");
+    stdout().flush().unwrap();
+    stdin().read_line(&mut input).expect("invalid input");
+    let seed = input.trim().parse::<u64>().unwrap_or(random_number);
+    let mut rng = StdRng::seed_from_u64(seed);
+
+    // calculating presets
     let gridpoint_width = (width as f32 * resolution) as usize;
     let gridpoint_height = (height as f32 * resolution) as usize;
-    let mut rng = rand::rng();
     let mut img = GrayImage::new(width, height);
-
     let mut gridpoint_vec: Vec<Vec<[f32; 2]>> = vec![vec![[0.0, 0.0]; gridpoint_width + 1]; gridpoint_height + 1];
+
+    //start timer
+    let start = Instant::now();
 
     // creating a grid of points with a random normalized vector
     for gy in 0..=gridpoint_height {
@@ -62,7 +85,7 @@ fn perlin_noise() {
             let C_vec_distance = [local_sample_point_x - 1.0, local_sample_point_y - 1.0];
             let D_vec_distance = [local_sample_point_x - 0.0, local_sample_point_y - 1.0];
 
-            // calculationg the dot product from both vectors at each gridpoint
+            // calculation the dot product from both vectors at each gridpoint
             let A_vec_dot = (A_vec_distance[0] * gridpoint_vec[local_A_y][local_A_x][0]) + (A_vec_distance[1] * gridpoint_vec[local_A_y][local_A_x][1]);
             let B_vec_dot = (B_vec_distance[0] * gridpoint_vec[local_B_y][local_B_x][0]) + (B_vec_distance[1] * gridpoint_vec[local_B_y][local_B_x][1]);
             let C_vec_dot = (C_vec_distance[0] * gridpoint_vec[local_C_y][local_C_x][0]) + (C_vec_distance[1] * gridpoint_vec[local_C_y][local_C_x][1]);
@@ -86,9 +109,17 @@ fn perlin_noise() {
         } else {
             0.0
         };
+
+        // print progress bar
+        print!("{}[2J", 27 as char);
         println!("Progress: {}%", progress.round());
     }
+    // save image
     img.save("perlin_noise.png").unwrap();
+
+    // print out how long it took
+    let duration = start.elapsed();
+    println!("Time elapsed: {:?}", duration);
 }
 
 // Add this smoothstep function
